@@ -1,18 +1,22 @@
 from PIL import Image
 import numpy as np
-
+import sys
 from math import sqrt
 
-encoded_img = None
-decoded_img = None
-im_width = None
-im_heigh = None
+verbose = False
+sizes = [2 ** i for i in range(1, 11)]
 
 CL_D2 = [1/sqrt(2), 1/sqrt(2)]              # D2 coefficients of low frequency filter
 CL_D4 = [(1 + sqrt(3)) / (4 * sqrt(2)),     # D4 coefficients of low frequency filter
         (3 + sqrt(3)) / (4 * sqrt(2)),
         (3 - sqrt(3)) / (4 * sqrt(2)),
         (1 - sqrt(3)) / (4 * sqrt(2))]
+CL_D6 = [   0.47046721 / sqrt(2),  # D6 coefficients of low frequency filter
+            1.14111692 / sqrt(2),
+            0.650365 / sqrt(2),
+            -0.19093442 / sqrt(2),
+            -0.12083221 / sqrt(2),
+            0.0498175 / sqrt(2),]
 
 
 def get_hpf_coeffs(CL):            # Coefficients of high frequency filter
@@ -41,6 +45,7 @@ def get_icoeffs(CL, CH):
     assert(len(CL) == len(CH))          # Dimensions lists factors should be equal
     iCL = []                            # The coefficients of the first line
     iCH = []                            # The coefficients of the second line
+    # for k in range(0, len(CL), 3):
     for k in range(0, len(CL), 2):
         iCL.extend([CL[k-2], CH[k-2]])
         iCH.extend([CL[k-1], CH[k-1]])
@@ -87,14 +92,12 @@ def idwt2(data, CL):
     return image
 
 
-def open_image(path, mode):
-    image = Image.open(path, mode).convert("F")
+def open_image(path, mode, color_mode):
+    image = Image.open(path, mode).convert(color_mode)
     im_width = image.width
     im_heigh = image.height
-    sizes = [2 ** i for i in range(1, 11)]
     if im_heigh != im_width or im_width not in sizes:
         image = adapt_img_size(image)
-
     image_array = np.array(image)
     print(image)
     image.close
@@ -103,7 +106,6 @@ def open_image(path, mode):
 
 def adapt_img_size(img):
     print("Resizing image...")
-    sizes = [2**i for i in range(1, 11)]
     im_width = img.width
     im_heigh = img.height
     if im_heigh < im_width:
@@ -120,39 +122,89 @@ def adapt_img_size(img):
     return img
 
 
-def encode(path, mode=CL_D2, threshold=0.05):
-    image = open_image(path, "r")
-    Image._show(Image.fromarray(image, 'F'))
-    if mode == "D2":
-        CL = CL_D2
-    elif mode == "D4":
-        CL = CL_D4
-    data = image.copy()/255
+def encode(path, color_mode="F", mode="D2", threshold=0.05):
+    print("--- Encoding block ---")
+    print("Color mode: " + color_mode)
+    print("Mode: " + mode)
+    print("Treshhold: " + str(threshold))
 
-    im_width, im_heigh = data.shape
-    w=im_width
-    h=im_heigh
+    image_arr = open_image(path, "r", color_mode)
+    if verbose: Image._show(Image.fromarray(image_arr, color_mode))
+    CL = check_mode(mode)
+
+    data = image_arr.copy()/255
+    print(CL)
+
+    w, h = data.shape
     while w >= len(CL) and h >= len(CL):
         data[0:w, 0:h] = dwt2(data[0:w, 0:h], CL)
         w /= 2
         h /= 2
-    # Image._show(Image.fromarray(data * 255, 'F'))
-    encoded_img = data
-    encoded_img[abs(data) < threshold] = 0
-    # Image._show(Image.fromarray(encoded_img * 255, 'F'))
 
+    # data = dwt2(data, CL)
+    if verbose: Image._show(Image.fromarray(data * 255, color_mode))
+    encoded_img = data
+    print("Quantization with parameter "+str(threshold)+" ...")
+    encoded_img[abs(data) < threshold] = 0
+    # print(encoded_img*255)
+    encoded_img = Image.fromarray(encoded_img * 255, color_mode)
+    if verbose: Image._show(encoded_img)
+    print("--- Encoding DONE ---")
+    return encoded_img
+
+def decode(path, color_mode="F", mode="D2"):
+    print("--- Decoding block ---")
+    print("Color mode: " + color_mode)
+    print("Mode: " + mode)
+
+    if isinstance(path, str):
+        image_arr = open_image(path, "r", color_mode)
+    else:
+        image_arr = np.array(path)
+        color_mode = path.mode
+    # print(image_arr)
+    CL = check_mode(mode)
+    if verbose: Image._show(Image.fromarray(image_arr, color_mode))
+    data = image_arr.copy() / 255
+    print(CL)
+    # print(data)
+
+    im_width, im_heigh = data.shape
     w = h = len(CL)
     while w <= im_width and h <= im_heigh:
         data[0:w, 0:h] = idwt2(data[0:w, 0:h], CL)
         w *= 2
         h *= 2
-    decoded_img = Image.fromarray(data * 255, 'F')
-    Image._show(decoded_img)
+    # data = idwt2(data, CL)
+    # print(data*255)
+    decoded_img = Image.fromarray(data * 255, color_mode)
+    if verbose: Image._show(decoded_img)
+    print("--- Decoding DONE ---")
     return decoded_img
 
-def decode():
-    pass
+def merge(img1, img2, mode):
+    color_mode = img1.mode
+    image1_arr = np.array(img1)
+    image2_arr = np.array(img2)
+    # print(image1_arr)
+    # print(image2_arr)
+    # print(image1_arr+image2_arr)
+    img=Image.fromarray(image1_arr+image2_arr, color_mode)
+    merged = decode(img, color_mode, mode)
+    Image._show(merged)
+    return merged
 
+def check_mode(mode):
+    if mode == "D2":
+        CL = CL_D2
+    elif mode == "D4":
+        CL = CL_D4
+    elif mode == "D6":
+        CL = CL_D6
+    else:
+        print("*** Unknown encode mod: " + mode + " ***")
+        sys.exit(1)
+    return CL
 
 
 

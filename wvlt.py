@@ -1,8 +1,8 @@
 import sys
 import cli_dispatcher
 
-print("___ Wavelet transformation program ___")
+print("[==== Wavelet transformation program ====]")
 
 cli_dispatcher.cdisp(sys.argv[1:])
 
-print("//--- Exit fom program ---//")
+print("[==== Exit fom program ====]")
