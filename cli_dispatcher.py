@@ -10,7 +10,7 @@ img_path = None
 
 def cdisp(argv):
     try:
-        opts, args = getopt.getopt(argv, "e:d:c:m:s:v", ["file=", "outfile="])
+        opts, args = getopt.getopt(argv, "e:d:c:m:g:s:v", ["file=", "outfile="])
         # print(args)
         # print(opts)
     except getopt.GetoptError:
@@ -48,7 +48,7 @@ def cdisp(argv):
             threshold = float(args[2]) if len(args) > 2 else 0.05
             encoded_img = core.encode(img_path, color_mode, mode, threshold)
             img = core.decode(encoded_img,color_mode,mode)
-        elif opt in ("-m", "--file"):
+        elif opt in ("-m", "--file"):   #merge
             img_path_1 = arg
             img_path_2 = args[0]
             color_mode = args[1] if len(args) > 1 else "F"
@@ -58,9 +58,19 @@ def cdisp(argv):
             encoded_img_1 = core.encode(img_path_1, color_mode, mode, threshold_1)
             encoded_img_2 = core.encode(img_path_2, color_mode, mode, threshold_2)
             img = core.merge(encoded_img_1, encoded_img_2, mode)
-        elif opt in ("-s", "--file"):
+        elif opt in ("-g", "--file"):
+            if arg == '':
+                img_path = choose_image()
+            else:
+                img_path = arg
+            color_mode = args[0] if len(args) > 0 else "RGB"
+            mode = args[1] if len(args) > 1 else "D2"
+            threshold = float(args[2]) if len(args) > 2 else 0.05
+            encoded_img = core.exp(img_path, color_mode, mode, threshold)
+            # img = core.decode(encoded_img, color_mode, mode)
+        elif opt in ("-s", "--file"):   #save as image
             core.save(img, arg)
-        elif opt == "-v":
+        elif opt == "-v":   #verbose
             core.verbose = True
             print("Verbose: " + str(core.verbose))
 

@@ -4,7 +4,7 @@ import sys
 from math import sqrt
 
 verbose = False
-sizes = [2 ** i for i in range(1, 11)]
+sizes = [2 ** i for i in range(1, 12)]
 
 CL_D2 = [1/sqrt(2), 1/sqrt(2)]              # D2 coefficients of low frequency filter
 CL_D4 = [(1 + sqrt(3)) / (4 * sqrt(2)),     # D4 coefficients of low frequency filter
@@ -186,13 +186,70 @@ def merge(img1, img2, mode):
     color_mode = img1.mode
     image1_arr = np.array(img1)
     image2_arr = np.array(img2)
-    # print(image1_arr)
-    # print(image2_arr)
-    # print(image1_arr+image2_arr)
     img=Image.fromarray(image1_arr+image2_arr, color_mode)
     merged = decode(img, color_mode, mode)
     Image._show(merged)
     return merged
+
+def exp(path, color_mode="F", mode="D2", threshold=0.05):
+    print("--- Encoding block ---")
+    print("Color mode: " + color_mode)
+    print("Mode: " + mode)
+    print("Treshhold: " + str(threshold))
+    img= Image.open(path, "r")
+    Image._show(img)
+    img_arr = np.array(img)
+    ch = get_channels(img)
+    Image._show(Image.fromarray(np.array(img_arr), color_mode))
+    # print(ch)
+    # print(image_arr)
+    # Image._show(Image.fromarray(np.array(ch), color_mode))
+    # data = image_arr.copy() / 255
+    # print(data)
+    # Image._show(Image.fromarray(data, color_mode))
+    print()
+    # Image._show(Image.fromarray(data*255, color_mode))
+    # image_arr = open_image(path, "r", color_mode)
+    # if verbose: Image._show(Image.fromarray(image_arr, color_mode))
+    # CL = check_mode(mode)
+    #
+    # data = image_arr.copy() / 255
+    # print(CL)
+    #
+    # w, h = data.shape
+    # while w >= len(CL) and h >= len(CL):
+    #     data[0:w, 0:h] = dwt2(data[0:w, 0:h], CL)
+    #     w /= 2
+    #     h /= 2
+    #
+    # # data = dwt2(data, CL)
+    # if verbose: Image._show(Image.fromarray(data * 255, color_mode))
+    # encoded_img = data
+    # print("Quantization with parameter " + str(threshold) + " ...")
+    # encoded_img[abs(data) < threshold] = 0
+    # # print(encoded_img*255)
+    # encoded_img = Image.fromarray(encoded_img * 255, color_mode)
+    # if verbose: Image._show(encoded_img)
+    print("--- Encoding DONE ---")
+
+def get_channels(img):
+    w = img.width
+    h = img.height
+    print("Width: "+str(w)+" \nHeight: "+str(h))
+    red_ch = [[0 for i in range(w)] for i in range(h)]
+    green_ch = [[0 for i in range(w)] for i in range(h)]
+    blue_ch = [[0 for i in range(w)] for i in range(h)]
+    for i in range(0, w):
+        for j in range(i, h):
+            r,g,b = img.getpixel((i, j))
+            red_ch[i][j] = r
+            green_ch[i][j] = g
+            blue_ch[i][j] = g
+    # print(np.array(red_ch))
+    # Image._show(Image.fromarray(np.array(red_ch) , "L"))
+    # Image._show(Image.fromarray(np.array(green_ch), "L"))
+    # Image._show(Image.fromarray(np.array(blue_ch), "L"))
+    return (red_ch, green_ch, blue_ch)
 
 def check_mode(mode):
     if mode == "D2":
